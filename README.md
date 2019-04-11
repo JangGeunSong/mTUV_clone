@@ -1,0 +1,1 @@
+This is DIP project repository
