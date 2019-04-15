@@ -14,7 +14,9 @@ protected: // serialization에서만 만들어집니다.
 
 // 특성입니다.
 public:
-
+	FILE* m_fdInputImage = NULL;
+	BYTE* m_paBitmapData = NULL;
+	BITMAPINFOHEADER m_bitmapHeader;
 // 작업입니다.
 public:
 

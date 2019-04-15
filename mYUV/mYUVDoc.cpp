@@ -13,6 +13,7 @@
 #include "mYUVDoc.h"
 
 #include <propkey.h>
+#include "CYuvConfDlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -146,4 +147,120 @@ void CmYUVDoc::OnFileOpen()
 	CFileDialog fileDialog(true);
 
 	iDialogResult = fileDialog.DoModal();
+
+	if (iDialogResult != IDOK)
+		return;
+
+	CYuvConfDlg yuvConfDialog;
+	iDialogResult = yuvConfDialog.DoModal();
+
+	if (iDialogResult != IDOK)
+		return;
+
+	enum ImageFormat
+	{
+		NONE = 0,
+		RGB444 = 1,
+		YUV420 = 2,
+		YUV400 = 3,
+	};
+
+	ImageFormat fmt = NONE;
+
+	int iWidth = yuvConfDialog.m_iWidth;
+	int iHeight = yuvConfDialog.m_iHeight;
+
+	if (yuvConfDialog.m_iRGB444) fmt = RGB444;
+	else if (yuvConfDialog.m_iYUV420) fmt = YUV420;
+	else if (yuvConfDialog.m_iYUV400) fmt = YUV400;
+
+	m_fdInputImage = _tfopen((LPCTSTR)fileDialog.GetPathName(), _T("rb"));
+
+	if (m_paBitmapData)
+		delete[] m_paBitmapData;
+
+	const int iBufferSize = iWidth * iHeight * 3;
+	m_paBitmapData = new BYTE[iBufferSize];
+
+	if (fmt == RGB444) {
+		BYTE b[3];
+		BYTE* pDst = m_paBitmapData + iBufferSize - (iWidth * 3);
+
+		for (int i = 0; i < iHeight; i++) {
+			for (int j = 0; j < iWidth; j++) {
+				fread(b, sizeof(BYTE), 3, m_fdInputImage);
+				pDst[j * 3 + 0] = b[2];
+				pDst[j * 3 + 1] = b[1];
+				pDst[j * 3 + 2] = b[0];
+			}
+			pDst -= (iWidth * 3);
+		}
+	}
+	else if (fmt == YUV420) {
+		BYTE* paYUV = new BYTE[iWidth * iHeight * 3 / 2];
+		int cbOffset = iWidth * iHeight;
+		int crOffset = cbOffset + (iWidth * iHeight / 4);
+		int iWidth2 = iWidth / 2;
+
+		fread(paYUV, sizeof(BYTE), iWidth * iHeight * 3 / 2, m_fdInputImage);
+
+		int y, cb, cr, r, g, b;
+		BYTE* pDst = m_paBitmapData + iBufferSize - (iWidth * 3);
+
+		for (int iY = 0; iY < iHeight; iY++) {
+			for (int iX = 0; iX < iWidth; iX++) {
+				int hx = iX / 2;
+				int hy = iY / 2;
+
+				y = paYUV[iY * iWidth + iX];
+				cb = paYUV[hy * iWidth2 + hx + cbOffset];
+				cr = paYUV[hy * iWidth2 + hx + crOffset];
+
+				r = (int)(y + (1.4065f * (cr - 128.f)));
+				g = (int)(y - (0.3455f * (cb - 128.f)) - (0.7169f * (cr - 128.f)));
+				b = (int)(y + (1.7790f * (cb - 128.f)));
+
+				r = r < 0 ? 0 : (r > 255 ? 255 : r);
+				g = g < 0 ? 0 : (g > 255 ? 255 : g);
+				b = b < 0 ? 0 : (b > 255 ? 255 : b);
+
+				pDst[iX * 3 + 0] = b;
+				pDst[iX * 3 + 1] = g;
+				pDst[iX * 3 + 2] = r;
+			}
+			pDst -= (iWidth * 3);
+		}
+		delete[] paYUV;
+	}
+	else if (fmt == YUV400) {
+		BYTE b;
+		BYTE* pDst = m_paBitmapData + iBufferSize - (iWidth * 3);
+		for (int i = 0; i < iHeight; i++) {
+			for (int j = 0; j < iWidth; j++) {
+				fread(&b, sizeof(BYTE), 1, m_fdInputImage);
+
+				pDst[j * 3 + 0] = b;
+				pDst[j * 3 + 1] = b;
+				pDst[j * 3 + 2] = b;
+			}
+			pDst -= (iWidth * 3);
+		}
+	}
+
+	m_bitmapHeader.biSize = sizeof(BITMAPINFOHEADER);
+	m_bitmapHeader.biPlanes = 1;
+	m_bitmapHeader.biBitCount = 24;
+	m_bitmapHeader.biCompression = BI_RGB;
+	m_bitmapHeader.biSizeImage = 0;
+	m_bitmapHeader.biXPelsPerMeter = 0;
+	m_bitmapHeader.biYPelsPerMeter = 0;
+	m_bitmapHeader.biClrUsed = 0;
+	m_bitmapHeader.biClrImportant = 0;
+	m_bitmapHeader.biWidth = iWidth;
+	m_bitmapHeader.biHeight = iHeight;
+
+	fclose(m_fdInputImage);
+
+	UpdateAllViews(0);
+
 }

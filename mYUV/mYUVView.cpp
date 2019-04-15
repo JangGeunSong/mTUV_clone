@@ -51,7 +51,7 @@ BOOL CmYUVView::PreCreateWindow(CREATESTRUCT& cs)
 
 // CmYUVView 그리기
 
-void CmYUVView::OnDraw(CDC* /*pDC*/)
+void CmYUVView::OnDraw(CDC* pDC)
 {
 	CmYUVDoc* pDoc = GetDocument();
 	ASSERT_VALID(pDoc);
@@ -59,6 +59,14 @@ void CmYUVView::OnDraw(CDC* /*pDC*/)
 		return;
 
 	// TODO: 여기에 원시 데이터에 대한 그리기 코드를 추가합니다.
+	if (pDoc->m_paBitmapData) {
+		int iWidth = pDoc->m_bitmapHeader.biWidth;
+		int iHeight = pDoc->m_bitmapHeader.biHeight;
+
+		::StretchDIBits(pDC->GetSafeHdc(), 0, 0, iWidth, iHeight, 0, 0,
+			iWidth, iHeight, pDoc->m_paBitmapData,
+			(LPBITMAPINFO)&pDoc->m_bitmapHeader, DIB_RGB_COLORS, SRCCOPY);
+	}
 }
 
 

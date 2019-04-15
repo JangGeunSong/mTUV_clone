@@ -20,4 +20,15 @@ protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
 
 	DECLARE_MESSAGE_MAP()
+public:
+	// 너비 값
+	int m_iWidth;
+	// 높이 값
+	int m_iHeight;
+	// 라디오버튼_1
+	int m_iRGB444;
+	// 라디오버튼_2
+	int m_iYUV420;
+	// 라디오버튼_3
+	int m_iYUV400;
 };
